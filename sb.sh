@@ -315,9 +315,30 @@ zqzs
 else
 bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/acme-yg/main/acme.sh)
 if [[ ! -f /root/ygkkkca/cert.crt && ! -f /root/ygkkkca/private.key && ! -s /root/ygkkkca/cert.crt && ! -s /root/ygkkkca/private.key ]]; then
-red "Acme证书申请失败，继续使用自签证书" 
+red "Acme证书申请失败，继续使用自签证书"
 zqzs
 else
+# 证书申请成功，设置自动更新钩子
+blue "正在设置证书自动更新..."
+DOMAIN=$(cat /root/ygkkkca/ca.log 2>/dev/null | tr -d '\n\r')
+if [ -n "$DOMAIN" ] && [ -f "$HOME/.acme.sh/acme.sh" ]; then
+    # 下载并设置钩子脚本
+    curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/cert-renew-hook.sh -o /root/cert-renew-hook.sh
+    chmod +x /root/cert-renew-hook.sh
+
+    # 设置证书安装钩子
+    $HOME/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
+        --cert-file /root/ygkkkca/cert.crt \
+        --key-file /root/ygkkkca/private.key \
+        --fullchain-file /root/ygkkkca/cert.crt \
+        --reloadcmd "bash /root/cert-renew-hook.sh $DOMAIN" >/dev/null 2>&1
+
+    if [ $? -eq 0 ]; then
+        green "证书自动更新已设置，acme.sh 会在证书过期前自动更新"
+    else
+        yellow "证书自动更新设置可能失败，建议稍后运行: bash setup-cert-auto-renew.sh"
+    fi
+fi
 ymzs
 fi
 fi
@@ -5122,11 +5143,12 @@ green " 9. 刷新并查看节点 【Clash-Meta/SFA+SFI+SFW三合一配置/订阅
 green "10. 查看 Sing-box 运行日志"
 green "11. 一键原版BBR+FQ加速"
 green "12. 管理 Acme 申请域名证书"
-green "13. 管理 Warp 查看Netflix/ChatGPT解锁情况"
-green "14. 添加 WARP-plus-Socks5 代理模式 【本地Warp/多地区Psiphon-VPN】"
-green "15. 双栈VPS切换IPV4/IPV6配置输出"
+green "13. 设置证书自动更新（修复证书过期问题）"
+green "14. 管理 Warp 查看Netflix/ChatGPT解锁情况"
+green "15. 添加 WARP-plus-Socks5 代理模式 【本地Warp/多地区Psiphon-VPN】"
+green "16. 双栈VPS切换IPV4/IPV6配置输出"
 white "----------------------------------------------------------------------------------"
-green "16. Sing-box-yg脚本使用说明书"
+green "17. Sing-box-yg脚本使用说明书"
 white "----------------------------------------------------------------------------------"
 green " 0. 退出脚本"
 red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -5235,7 +5257,7 @@ showprotocol
 fi
 red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo
-readp "请输入数字【0-16】:" Input
+readp "请输入数字【0-17】:" Input
 case "$Input" in  
  1 ) instsllsingbox;;
  2 ) unins;;
@@ -5249,9 +5271,10 @@ case "$Input" in
 10 ) sblog;;
 11 ) bbr;;
 12 ) acme;;
-13 ) cfwarp;;
-14 ) inssbwpph;;
-15 ) wgcfgo && sbshare;;
-16 ) sbsm;;
+13 ) bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/setup-cert-auto-renew.sh);;
+14 ) cfwarp;;
+15 ) inssbwpph;;
+16 ) wgcfgo && sbshare;;
+17 ) sbsm;;
  * ) exit 
 esac
